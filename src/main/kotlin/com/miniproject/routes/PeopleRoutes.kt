@@ -18,7 +18,7 @@ object Peoples : Table() {
     val name: Column<String> = varchar("name", 50)
     val email: Column<String> = varchar("email", 50).uniqueIndex()
     val favoritePL: Column<String> = varchar("favoritePL", 50)
-    override val primaryKey = PrimaryKey(id, name = "PK_Peoples_Id")
+    override val primaryKey = PrimaryKey(id)
 }
 
 fun Route.peopleRouting() {
