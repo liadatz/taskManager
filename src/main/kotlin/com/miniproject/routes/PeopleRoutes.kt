@@ -1,5 +1,6 @@
 package com.miniproject.routes
 
+import com.google.gson.Gson
 import com.miniproject.db
 import com.miniproject.models.*
 import io.ktor.application.*
@@ -11,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.jetbrains.exposed.sql.transactions.transaction
+
 
 // Table definition
 object Peoples : Table() {
@@ -71,12 +73,79 @@ fun Route.peopleRouting() {
                 "A person with the id '${call.parameters["id"]}' does not exist.",
                 status = HttpStatusCode.NotFound
             )
+            val answer = Person(
+                id = getResult.await()!![Peoples.id].toString(),
+                name = getResult.await()!![Peoples.name],
+                email = getResult.await()!![Peoples.email],
+                favoriteProgrammingLanguage = getResult.await()!![Peoples.favoritePL],
+                activeTaskCount = 0
+            ) // TODO: add count from tasks
 
-            // add correct respond
-            call.respondText("No customers found", status = HttpStatusCode.NotFound)
+            call.respond(answer)
         }
         patch("{id}") {
+            val paramId = try {
+                call.parameters["id"]!!.toInt()
+            } catch (e: Exception) {
+                return@patch call.respondText(
+                    "Missing or malformed id",
+                    status = HttpStatusCode.NotFound
+                )
+            }
+            var getResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Peoples.select { Peoples.id eq paramId }.singleOrNull()
+            }
+            getResult.await() ?: return@patch call.respondText(
+                "A person with the id '${call.parameters["id"]}' does not exist.",
+                status = HttpStatusCode.NotFound
+            )
 
+            var fieldToChange: Map<String, String> = HashMap()
+            fieldToChange = Gson().fromJson(call.receiveText(), fieldToChange.javaClass)
+            if (fieldToChange["name"] != null)
+                suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                    Peoples.update ({ Peoples.id eq paramId }) {
+                        it[Peoples.name] = fieldToChange["name"]!!
+                    }
+                }.await()
+            if (fieldToChange["email"] != null)
+                suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                    Peoples.update ({ Peoples.id eq paramId }) {
+                        it[Peoples.email] = fieldToChange["email"]!!
+                    }
+                }.await()
+            if (fieldToChange["favoriteProgrammingLanguage"] != null)
+                suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                    Peoples.update ({ Peoples.id eq paramId }) {
+                        it[Peoples.favoritePL] = fieldToChange["favoriteProgrammingLanguage"]!!
+                    }
+                }.await()
+//            launch {
+//                fieldToChange.forEach() { (field, value) ->
+//                    suspendedTransactionAsync(Dispatchers.IO, db = db) {
+//                        Peoples.update({ Peoples.id eq paramId }) {
+//                            when (field) {
+//                                "name" -> it[Peoples.name] = value
+//                                "email" -> it[Peoples.email] = value
+//                                "favoriteProgrammingLanguage" -> it[Peoples.favoritePL] = value
+//                            }
+//                        }
+//                    }.await()
+//                }
+//            }
+
+            getResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Peoples.select { Peoples.id eq paramId }.single()
+            }
+
+            val answer = Person(
+                id = getResult.await()[Peoples.id].toString(),
+                name = getResult.await()[Peoples.name],
+                email = getResult.await()[Peoples.email],
+                favoriteProgrammingLanguage = getResult.await()[Peoples.favoritePL],
+                activeTaskCount = 0
+            ) // TODO: add count from tasks
+            call.respond(answer)
         }
         delete("{id}") {
 
