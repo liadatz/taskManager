@@ -26,7 +26,7 @@ object Peoples : Table() {
 fun Route.peopleRouting() {
     transaction { SchemaUtils.create(Peoples) }
     route("/people") {
-        post {
+        post ("/"){
             val person = try {
                 call.receive<Person>()
             } catch (e: Exception) {
@@ -54,8 +54,20 @@ fun Route.peopleRouting() {
             call.response.header("x-Created-Id", "${postResult.await()[Peoples.id]}")
             call.respondText("Person created successfully", status = HttpStatusCode.Created)
         }
-        get {
-
+        get("/") {
+            val personList = ArrayList<Person>()
+            val getResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Peoples.selectAll().forEach {
+                    val count = Tasks.select { Tasks.ownerId eq it[Peoples.id].toString() }.count()
+                    personList.add(Person(id = it[Peoples.id].toString(),
+                                          name = it[Peoples.name],
+                                          email = it[Peoples.email],
+                                          favoriteProgrammingLanguage = it[Peoples.favoritePL],
+                                          activeTaskCount = count.toInt()))
+                }
+            }
+            getResult.await()
+            call.respond(personList)
         }
         get("{id}") {
             val paramId = try {
@@ -66,20 +78,26 @@ fun Route.peopleRouting() {
                     status = HttpStatusCode.NotFound
                 )
             }
+            val countResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Tasks.select { Tasks.ownerId eq paramId.toString() }.count()
+            }
+
             val getResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Peoples.select { Peoples.id eq paramId }.singleOrNull()
             }
+
             getResult.await() ?: return@get call.respondText(
                 "A person with the id '${call.parameters["id"]}' does not exist.",
                 status = HttpStatusCode.NotFound
             )
+
             val answer = Person(
                 id = getResult.await()!![Peoples.id].toString(),
                 name = getResult.await()!![Peoples.name],
                 email = getResult.await()!![Peoples.email],
                 favoriteProgrammingLanguage = getResult.await()!![Peoples.favoritePL],
-                activeTaskCount = 0
-            ) // TODO: add count from tasks
+                activeTaskCount = countResult.await().toInt()
+            )
 
             call.respond(answer)
         }
@@ -105,37 +123,28 @@ fun Route.peopleRouting() {
             if (fieldToChange["name"] != null)
                 suspendedTransactionAsync(Dispatchers.IO, db = db) {
                     Peoples.update ({ Peoples.id eq paramId }) {
-                        it[Peoples.name] = fieldToChange["name"]!!
+                        it[name] = fieldToChange["name"]!!
                     }
                 }.await()
             if (fieldToChange["email"] != null)
                 suspendedTransactionAsync(Dispatchers.IO, db = db) {
                     Peoples.update ({ Peoples.id eq paramId }) {
-                        it[Peoples.email] = fieldToChange["email"]!!
+                        it[email] = fieldToChange["email"]!!
                     }
                 }.await()
             if (fieldToChange["favoriteProgrammingLanguage"] != null)
                 suspendedTransactionAsync(Dispatchers.IO, db = db) {
                     Peoples.update ({ Peoples.id eq paramId }) {
-                        it[Peoples.favoritePL] = fieldToChange["favoriteProgrammingLanguage"]!!
+                        it[favoritePL] = fieldToChange["favoriteProgrammingLanguage"]!!
                     }
                 }.await()
-//            launch {
-//                fieldToChange.forEach() { (field, value) ->
-//                    suspendedTransactionAsync(Dispatchers.IO, db = db) {
-//                        Peoples.update({ Peoples.id eq paramId }) {
-//                            when (field) {
-//                                "name" -> it[Peoples.name] = value
-//                                "email" -> it[Peoples.email] = value
-//                                "favoriteProgrammingLanguage" -> it[Peoples.favoritePL] = value
-//                            }
-//                        }
-//                    }.await()
-//                }
-//            }
 
             getResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Peoples.select { Peoples.id eq paramId }.single()
+            }
+
+            val countResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Tasks.select { Tasks.ownerId eq paramId.toString() }.count()
             }
 
             val answer = Person(
@@ -143,17 +152,105 @@ fun Route.peopleRouting() {
                 name = getResult.await()[Peoples.name],
                 email = getResult.await()[Peoples.email],
                 favoriteProgrammingLanguage = getResult.await()[Peoples.favoritePL],
-                activeTaskCount = 0
-            ) // TODO: add count from tasks
+                activeTaskCount = countResult.await().toInt()
+            )
             call.respond(answer)
         }
         delete("{id}") {
+            val paramId = try {
+                call.parameters["id"]!!.toInt()
+            } catch (e: Exception) {
+                return@delete call.respondText(
+                    "Missing or malformed id",
+                    status = HttpStatusCode.NotFound
+                )
+            }
+            val getResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Peoples.select { Peoples.id eq paramId }.singleOrNull()
+            }
+            getResult.await() ?: return@delete call.respondText(
+                "A person with the id '${call.parameters["id"]}' does not exist.",
+                status = HttpStatusCode.NotFound
+            )
+
+            val deleteResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Peoples.deleteWhere { Peoples.id eq paramId }
+            }
+
+            deleteResult.await()
+            call.respondText("Person removed successfully.", status = HttpStatusCode.OK)
 
         }
         get("{id}/tasks") {
+            val paramId = try {
+                call.parameters["id"]!!.toInt()
+            } catch (e: Exception) {
+                return@get call.respondText(
+                    "Missing or malformed id",
+                    status = HttpStatusCode.NotFound
+                )
+            }
+            val getResultPerson = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Peoples.select { Peoples.id eq paramId }.singleOrNull()
+            }
+            getResultPerson.await() ?: return@get call.respondText(
+                "A person with the id '${call.parameters["id"]}' does not exist.",
+                status = HttpStatusCode.NotFound
+            )
+            val tasksList = ArrayList<Task>()
+            val getResultTask = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Tasks.select { Tasks.ownerId eq paramId.toString() }.forEach {
+                    tasksList.add(Task(it[Tasks.title], it[Tasks.details], it[Tasks.dueDate], it[Tasks.status], it[Tasks.ownerId]))
+                }
+            }
+            getResultTask.await()
+            call.respond(tasksList)
 
         }
         post("{id}/tasks") {
+            val paramId = try {
+                call.parameters["id"]!!.toInt()
+            } catch (e: Exception) {
+                return@post call.respondText(
+                    "Missing or malformed id",
+                    status = HttpStatusCode.NotFound
+                )
+            }
+            val getResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Peoples.select { Peoples.id eq paramId }.singleOrNull()
+            }
+            getResult.await() ?: return@post call.respondText(
+                "A person with the id '${call.parameters["id"]}' does not exist.",
+                status = HttpStatusCode.NotFound
+            )
+
+            val task = try {
+                call.receive<Task>()
+            } catch (e: Exception) {
+                println(e)
+                return@post call.respondText(
+                    "Required data fields are missing, data makes no sense, or data contains illegal values.",
+                    status = HttpStatusCode.BadRequest
+                )
+            }
+
+            task.ownerId = paramId.toString()
+
+            val postResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Tasks.insert {
+                    it[title] = task.title
+                    it[status] = task.status
+                    it[dueDate] = task.dueDate
+                    it[details] = task.details
+                    it[ownerId] =  task.ownerId
+                }
+            }
+
+            postResult.await()
+            call.response.header(HttpHeaders.Location, "http://localhost:8080/tasks/${postResult.await()[Tasks.id]}")
+            call.response.header("x-Created-Id", "${postResult.await()[Tasks.id]}")
+            call.respondText("Task created and assigned successfully", status = HttpStatusCode.Created)
+
 
         }
     }

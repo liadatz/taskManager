@@ -1,10 +1,8 @@
 package com.miniproject
 
-import com.miniproject.routes.Peoples
+import com.miniproject.routes.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import com.miniproject.routes.registerPeopleRoutes
-import com.miniproject.routes.registerTaskRoutes
 import io.ktor.application.*
 import io.ktor.features .*
 import io.ktor.gson.*
@@ -17,6 +15,7 @@ val db = Database.connect("jdbc:sqlite:./src/main/kotlin/com/miniproject/data/da
 fun main() {
     transaction {
         SchemaUtils.drop(Peoples)
+        SchemaUtils.drop(Tasks)
     }
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
         install(ContentNegotiation) {
