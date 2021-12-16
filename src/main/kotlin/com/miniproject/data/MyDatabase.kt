@@ -197,7 +197,7 @@ object MyDatabase {
     suspend fun updateTaskStatus(id: String, status: String) {
         suspendedTransactionAsync(Dispatchers.IO, db = db) {
             Tasks.update({ Tasks.id eq id.toInt() }) {
-                if (status == "active" || status == "Active") it[Tasks.status] = Status.Active //TODO: should be case insensitive
+                if (status == "active" || status == "Active") it[Tasks.status] = Status.Active //TODO: should be    case insensitive
                 else if (status == "done" || status == "Done") it[Tasks.status] = Status.Done //TODO: should be case insensitive
             }
         }.await()
