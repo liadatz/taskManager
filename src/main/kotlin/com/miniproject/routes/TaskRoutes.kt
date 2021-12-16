@@ -11,6 +11,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 
 import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -74,34 +75,38 @@ fun Route.taskRouting() {
 
             var fieldToChange: Map<String, String> = HashMap()
             fieldToChange = Gson().fromJson(call.receiveText(), fieldToChange.javaClass)
-            if (fieldToChange["title"] != null)
+            if (fieldToChange["title"] != null) {
                 suspendedTransactionAsync(Dispatchers.IO, db = db) {
                     Tasks.update({ Tasks.id eq paramId }) {
+                        println(fieldToChange["title"])
                         it[Tasks.title] = fieldToChange["title"]!!
                     }
                 }.await()
-            if (fieldToChange["details"] != null)
+            }
+            if (fieldToChange["details"] != null) {
                 suspendedTransactionAsync(Dispatchers.IO, db = db) {
                     Tasks.update({ Tasks.id eq paramId }) {
                         it[Tasks.details] = fieldToChange["details"]!!
                     }
                 }.await()
-            if (fieldToChange["dueDate"] != null)
+            }
+            if (fieldToChange["dueDate"] != null) {
                 suspendedTransactionAsync(Dispatchers.IO, db = db) {
                     Tasks.update({ Tasks.id eq paramId }) {
                         // TODO: validate date?
                         it[Tasks.dueDate] = fieldToChange["dueDate"]!!
                     }
                 }.await()
-            if (fieldToChange["status"] != null)
+            }
+            if (fieldToChange["status"] != null) {
                 suspendedTransactionAsync(Dispatchers.IO, db = db) {
                     Tasks.update({ Tasks.id eq paramId }) {
                         val statusStr = fieldToChange["status"]!!
-                        if (statusStr == "Active") it[Tasks.status] = Status.Active
-                        else if (statusStr == "Done") it[Tasks.status] = Status.Done
+                        if (statusStr == "active" || statusStr == "Active") it[Tasks.status] = Status.Active //TODO: should be case insensitive
+                        else if (statusStr == "done" || statusStr == "Done") it[Tasks.status] = Status.Done //TODO: should be case insensitive
                     }
                 }.await()
-
+            }
             getResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Tasks.select { Tasks.id eq paramId }.single()
             }
@@ -130,7 +135,11 @@ fun Route.taskRouting() {
                 "A task with the id '${call.parameters["id"]}' does not exist.",
                 status = HttpStatusCode.NotFound
             )
-            Tasks.deleteWhere { Tasks.id eq paramId }
+            val deleteResult = suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Tasks.deleteWhere { Tasks.id eq paramId }
+            }
+
+            deleteResult.await()
             call.respondText("Task removed successfully.", status = HttpStatusCode.OK)
         }
 
@@ -172,19 +181,14 @@ fun Route.taskRouting() {
                 "A task with the id '${call.parameters["id"]}' does not exist.",
                 status = HttpStatusCode.NotFound
             )
-
             val statusStr = call.receiveText()
-            val status: Status
-            if (statusStr == "Active") status = Status.Active;
-            else if (statusStr == "Done") status = Status.Done
-            else {
-                return@put call.respondText(
-                    "value '${statusStr}' is not a legal task status.",
-                    status = HttpStatusCode.BadRequest);
-            }
-            Tasks.update ({ Tasks.id eq paramId }) { it[Tasks.status] = status };
-
-            call.respondText("task's status updated successfully.", status = HttpStatusCode.NoContent)
+            suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Tasks.update({ Tasks.id eq paramId }) {
+                    if (statusStr == "active" || statusStr == "Active") it[Tasks.status] = Status.Active //TODO: should be case insensitive
+                    else if (statusStr == "done" || statusStr == "Done") it[Tasks.status] = Status.Done //TODO: should be case insensitive
+                }
+            }.await()
+            call.respondText("task's status updated successfully.", status = HttpStatusCode.OK)
         }
         get("{id}/owner") {
             val paramId = try {
@@ -231,14 +235,15 @@ fun Route.taskRouting() {
                 "A person with the id '${ownerID}' does not exist.",
                 status = HttpStatusCode.NotFound
             )
-            Tasks.update ({ Tasks.id eq paramId }) { it[Tasks.ownerId] = ownerID };
-
-            call.respondText("task's status updated successfully.", status = HttpStatusCode.NoContent)
+            suspendedTransactionAsync(Dispatchers.IO, db = db) {
+                Tasks.update({ Tasks.id eq paramId })
+                { it[Tasks.ownerId] = ownerID }
+            }
+            call.respondText("task's owner updated successfully.", status = HttpStatusCode.OK)
         }
     }
 
 }
-
 
 fun Application.registerTaskRoutes() {
     routing {
