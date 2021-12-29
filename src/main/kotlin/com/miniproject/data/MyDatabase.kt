@@ -1,14 +1,20 @@
 package com.miniproject.data
 
+import com.miniproject.convertToDate
 import com.miniproject.models.Person
 import com.miniproject.models.Status
 import com.miniproject.models.Task
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.`java-time`.datetime
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.LocalDateTime
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 object MyDatabase {
     private val db = Database.connect("jdbc:sqlite:./src/main/kotlin/com/miniproject/data/data.db", "org.sqlite.JDBC")
@@ -175,10 +181,11 @@ object MyDatabase {
             }.await()
         }
         if (updateMap["dueDate"] != null) {
+            val converted = convertToDate(updateMap["dueDate"]!!)
+            converted ?: return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Tasks.update({ Tasks.id eq intId }) {
-                    // TODO: validate date?
-                    it[dueDate] = updateMap["dueDate"]!!
+                    it[dueDate] = converted
                 }
             }.await()
         }
@@ -232,7 +239,7 @@ object Tasks : Table() {
     val ownerId: Column<String> = varchar("ownerId", 50)
     val status: Column<Status> = enumeration("status", Status::class)
     val details: Column<String> = varchar("details", 50)
-    val dueDate: Column<String> = varchar("dueDate", 10)
+    val dueDate: Column<LocalDateTime> = datetime("dueDate")
     override val primaryKey = PrimaryKey(id)
 }
 

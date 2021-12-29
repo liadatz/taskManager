@@ -9,8 +9,10 @@ import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
-
-
+import java.text.ParsePosition
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.HashMap
 
 
 fun Route.taskRouting() {
@@ -43,7 +45,8 @@ fun Route.taskRouting() {
             var fieldToChange: HashMap<String, String> = HashMap()
             fieldToChange = Gson().fromJson(call.receiveText(), fieldToChange.javaClass)
             val task = MyDatabase.updateAndGetTask(paramId, fieldToChange)
-            call.respond(task!!)
+            task ?: return@patch call.respondText("Invalid date format",  status = HttpStatusCode.BadRequest)
+            call.respond(task)
         }
         delete("{id}") {
             if (!isValidNumber(call.parameters["id"]!!))

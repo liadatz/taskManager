@@ -30,6 +30,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-java-time:0.30.1")
     implementation("org.xerial:sqlite-jdbc:3.30.1")
     implementation("io.ktor:ktor-gson:$ktor_version")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.13.1")
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }

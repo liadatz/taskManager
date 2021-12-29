@@ -1,19 +1,23 @@
 package com.miniproject.models
 
+import com.miniproject.convertToDate
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
+import java.time.LocalDateTime
+import java.util.*
 
 @Serializable(with = TaskAsStringSerializer::class)
 data class Task(var title: String,
                 var details: String,
-                var dueDate: String,
+                var dueDate: LocalDateTime,
                 var status: Status = Status.Active,
                 var ownerId: String = "")
 
 enum class Status {
     Active, Done
 }
+
 
 object TaskAsStringSerializer : KSerializer<Task> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("Task") {
@@ -28,7 +32,7 @@ object TaskAsStringSerializer : KSerializer<Task> {
         encoder.encodeStructure(descriptor) {
             encodeStringElement(descriptor, 0, value.title)
             encodeStringElement(descriptor, 1, value.details)
-            encodeStringElement(descriptor, 2, value.dueDate)
+            encodeStringElement(descriptor, 2, value.dueDate.toString())
             when (value.status) {
                 Status.Active -> encodeStringElement(descriptor, 3, "active")
                 Status.Done -> encodeStringElement(descriptor, 3, "done")
@@ -54,9 +58,11 @@ object TaskAsStringSerializer : KSerializer<Task> {
                     else -> error("Unexpected index: $index")
                 }
             }
+            val convertedDate = convertToDate(dueDate)
+            convertedDate ?: throw Exception()
             return if (status == "" || status == "active")
-                Task(title, details, dueDate)
-            else Task(title, details, dueDate, Status.Done)
+                Task(title, details, convertedDate)
+            else Task(title, details, convertedDate, Status.Done)
         }
     }
 }
