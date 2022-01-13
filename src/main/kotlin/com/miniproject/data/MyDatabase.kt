@@ -12,7 +12,6 @@ import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.experimental.suspendedTransactionAsync
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDateTime
-import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
@@ -77,26 +76,38 @@ object MyDatabase {
         )
     }
 
-    suspend fun updateAndGetPersonAsync(id: String, updateMap: HashMap<String, String>): Person? {
+    suspend fun updateAndGetPersonAsync(id: String, updateMap: HashMap<String, Any>): Person? {
         val intId = id.toInt()
-        if (updateMap["name"] != null)
+        if (updateMap["name"] != null) {
+            val valueToUpdate = updateMap["name"]
+            if (valueToUpdate !is String)
+                return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Peoples.update({ Peoples.id eq intId }) {
-                    it[name] = updateMap["name"]!!
+                    it[name] = valueToUpdate
                 }
             }.await()
-        if (updateMap["email"] != null)
+        }
+        if (updateMap["email"] != null) {
+            val valueToUpdate = updateMap["email"]
+            if (valueToUpdate !is String)
+                return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Peoples.update({ Peoples.id eq intId }) {
-                    it[email] = updateMap["email"]!!
+                    it[email] = valueToUpdate
                 }
             }.await()
-        if (updateMap["favoriteProgrammingLanguage"] != null)
+        }
+        if (updateMap["favoriteProgrammingLanguage"] != null) {
+            val valueToUpdate = updateMap["favoriteProgrammingLanguage"]
+            if (valueToUpdate !is String)
+                return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Peoples.update({ Peoples.id eq intId }) {
-                    it[favoritePL] = updateMap["favoriteProgrammingLanguage"]!!
+                    it[favoritePL] = valueToUpdate
                 }
             }.await()
+        }
 
         return getPersonAsync(id)
     }
@@ -164,24 +175,33 @@ object MyDatabase {
             ownerId = getResult[Tasks.ownerId])
     }
 
-    suspend fun updateAndGetTask(id: String, updateMap: HashMap<String, String>) : Task? {
+    suspend fun updateAndGetTask(id: String, updateMap: HashMap<String, Any>) : Task? {
         val intId = id.toInt()
         if (updateMap["title"] != null) {
+            val valueToUpdate = updateMap["title"]
+            if (valueToUpdate !is String)
+                return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Tasks.update({ Tasks.id eq intId }) {
-                    it[title] = updateMap["title"]!!
+                    it[title] = valueToUpdate
                 }
             }.await()
         }
         if (updateMap["details"] != null) {
+            val valueToUpdate = updateMap["details"]
+            if (valueToUpdate !is String)
+                return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Tasks.update({ Tasks.id eq intId }) {
-                    it[details] = updateMap["details"]!!
+                    it[details] = valueToUpdate
                 }
             }.await()
         }
         if (updateMap["dueDate"] != null) {
-            val converted = convertToDate(updateMap["dueDate"]!!)
+            val valueToUpdate = updateMap["dueDate"]
+            if (valueToUpdate !is String)
+                return null
+            val converted = convertToDate(valueToUpdate)
             converted ?: return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Tasks.update({ Tasks.id eq intId }) {
@@ -190,11 +210,13 @@ object MyDatabase {
             }.await()
         }
         if (updateMap["status"] != null) {
+            val valueToUpdate = updateMap["status"]
+            if (valueToUpdate !is String)
+                return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Tasks.update({ Tasks.id eq intId }) {
-                    val statusStr = updateMap["status"]!!
-                    if (statusStr == "active" || statusStr == "Active") it[status] = Status.Active //TODO: should be case insensitive
-                    else if (statusStr == "done" || statusStr == "Done") it[status] = Status.Done //TODO: should be case insensitive
+                    if (valueToUpdate == "active" || valueToUpdate == "Active") it[status] = Status.Active
+                    else if (valueToUpdate == "done" || valueToUpdate == "Done") it[status] = Status.Done
                 }
             }.await()
         }

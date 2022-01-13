@@ -1,7 +1,6 @@
 package com.miniproject.routes
 
 import com.google.gson.Gson
-import com.miniproject.convertToDate
 import com.miniproject.data.MyDatabase
 import com.miniproject.data.Peoples
 import com.miniproject.data.Tasks
@@ -65,10 +64,15 @@ fun Route.peopleRouting() {
                 "A person with the id '$paramId' does not exist.",
                 status = HttpStatusCode.NotFound)
 
-            var fieldToChange: HashMap<String, String> = HashMap()
+            var fieldToChange: HashMap<String, Any> = HashMap()
             fieldToChange = Gson().fromJson(call.receiveText(), fieldToChange.javaClass)
             val person = MyDatabase.updateAndGetPersonAsync(paramId, fieldToChange)
-            call.respond(person!!)
+
+            person ?: return@patch call.respondText(
+                "One or more fields is invalid!",
+                status = HttpStatusCode.BadRequest)
+
+            call.respond(person)
         }
 
         delete("{id}") {
