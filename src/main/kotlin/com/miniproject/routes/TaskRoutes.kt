@@ -16,7 +16,7 @@ import kotlin.collections.HashMap
  * Configuration for tasks routing
  */
 fun Route.taskRouting() {
-    route("/tasks") {
+    route("/api/tasks") {
         get("{id}") {
             if (!isValidNumber(call.parameters["id"]!!))
                 return@get call.respondText(

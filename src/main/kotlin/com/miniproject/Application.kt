@@ -7,10 +7,11 @@ import io.ktor.server.netty.*
 import io.ktor.application.*
 import io.ktor.features .*
 import io.ktor.gson.*
+import io.ktor.http.*
 import io.ktor.serialization.*
 
 fun main() {
-    MyDatabase.createTables(false)
+    MyDatabase.createTables(true)
     embeddedServer(Netty, port = 8080, host = "127.0.0.1") {
         install(ContentNegotiation) {
             json()

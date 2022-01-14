@@ -17,7 +17,7 @@ import io.ktor.routing.*
  * Configuration for people routing
  */
 fun Route.peopleRouting() {
-    route("/people") {
+    route("/api/people") {
         post ("/"){
             val person = try {
                 call.receive<Person>()
