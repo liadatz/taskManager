@@ -13,7 +13,9 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 
-
+/**
+ * Configuration for people routing
+ */
 fun Route.peopleRouting() {
     route("/people") {
         post ("/"){

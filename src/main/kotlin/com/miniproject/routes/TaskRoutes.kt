@@ -12,7 +12,9 @@ import io.ktor.routing.*
 
 import kotlin.collections.HashMap
 
-
+/**
+ * Configuration for tasks routing
+ */
 fun Route.taskRouting() {
     route("/tasks") {
         get("{id}") {

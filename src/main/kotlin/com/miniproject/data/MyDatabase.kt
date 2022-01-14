@@ -1,6 +1,7 @@
 package com.miniproject.data
 
 import com.miniproject.convertToDate
+import com.miniproject.isValidEmail
 import com.miniproject.models.Person
 import com.miniproject.models.Status
 import com.miniproject.models.Task
@@ -90,7 +91,7 @@ object MyDatabase {
         }
         if (updateMap["email"] != null) {
             val valueToUpdate = updateMap["email"]
-            if (valueToUpdate !is String)
+            if (valueToUpdate !is String || !isValidEmail(valueToUpdate))
                 return null
             suspendedTransactionAsync(Dispatchers.IO, db = db) {
                 Peoples.update({ Peoples.id eq intId }) {
