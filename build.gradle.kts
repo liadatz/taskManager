@@ -7,10 +7,19 @@ plugins {
     application
     kotlin("jvm") version "1.6.0"
     kotlin("plugin.serialization") version "1.4.31"
+    id("com.github.johnrengelman.shadow") version "7.0.0"
+}
+
+tasks{
+    shadowJar {
+        manifest {
+            attributes(Pair("Main-Class", "com.miniproject.ApplicationKt"))
+        }
+    }
 }
 
 group = "com.miniproject"
-version = "0.0.1"
+version = "1.0.0"
 application {
     mainClass.set("com.miniproject.ApplicationKt")
 }

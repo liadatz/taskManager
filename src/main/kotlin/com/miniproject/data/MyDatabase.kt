@@ -17,7 +17,7 @@ import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 object MyDatabase {
-    private val db = Database.connect("jdbc:sqlite:./src/main/kotlin/com/miniproject/data/data.db", "org.sqlite.JDBC")
+    private val db = Database.connect("jdbc:sqlite:./data.db", "org.sqlite.JDBC")
 
     /**
      * Initiate Exposed database tables in file if not exists
