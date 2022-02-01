@@ -33,7 +33,7 @@ fun Route.peopleRouting() {
                     status = HttpStatusCode.BadRequest)
 
             val insertResult = MyDatabase.insertPersonAsync(person)
-            call.response.header(HttpHeaders.Location, "http://localhost:8080/people/${insertResult[Peoples.id]}")
+            call.response.header(HttpHeaders.Location, "http://localhost:8080/api/people/${insertResult[Peoples.id]}")
             call.response.header("x-Created-Id", "${insertResult[Peoples.id]}")
             call.respondText("Person created successfully", status = HttpStatusCode.Created)
         }
@@ -131,7 +131,7 @@ fun Route.peopleRouting() {
             task.ownerId = paramId
             val postResult = MyDatabase.insertTask(task)
 
-            call.response.header(HttpHeaders.Location, "http://localhost:8080/tasks/${postResult[Tasks.id]}")
+            call.response.header(HttpHeaders.Location, "http://localhost:8080/api/tasks/${postResult[Tasks.id]}")
             call.response.header("x-Created-Id", "${postResult[Tasks.id]}")
             call.respondText("Task created and assigned successfully", status = HttpStatusCode.Created)
         }
